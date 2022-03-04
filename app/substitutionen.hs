@@ -10,17 +10,19 @@ import Variablen
 data Subst = Subst [(VarName, Term)]
   deriving (Show)
 
+-- intercalate
 instance Pretty Subst where
   pretty (Subst s1) = reverse (tail (tail (reverse ("{" ++ concatMap (\x -> pretty (fst x) ++ " -> " ++ pretty (snd x) ++ ", ") s1)))) ++ "}"
 
 instance Vars Subst where
   allVars (Subst s1) = nub (concatMap (\(x, y) -> x : allVars y) s1)
 
+-- TODO längere arbitrary listen / listen instance für arbitrary
 instance Arbitrary Subst where
   arbitrary = do
     name <- arbitrary
-    term <- arbitrary `suchThat` (\x -> x /= Var name)
-    return (Subst [(name, term)])
+    term <- arbitrary
+    return (Subst (filter (\(x, t) -> Var x /= t) (zip (nub name) term)))
 
 -- apply(empty,t) = t
 prop_law1 :: Term -> Bool
@@ -34,8 +36,9 @@ prop_law2 x t = apply (single x t) (Var x) == t
 prop_law3 :: Subst -> Subst -> Term -> Bool
 prop_law3 s1 s2 t = apply (compose s1 s2) t == apply s1 (apply s2 t)
 
-prop_law4 :: VarName -> Bool
-prop_law4 x = domain empty == []
+--domain(empty) = {}
+prop_law4 :: Bool
+prop_law4 = null (domain empty)
 
 --domain(single(x,Var x)) = {}
 prop_law5 :: VarName -> Bool
@@ -97,6 +100,10 @@ prop_law16 xs s = filter (`notElem` xs) (domain (restrictTo s xs)) == []
 domain :: Subst -> [VarName]
 domain (Subst subst) = map fst subst
 
+isEmpty :: Subst -> Bool
+isEmpty (Subst []) = True
+isEmpty _ = False
+
 empty :: Subst
 empty = Subst []
 
@@ -110,7 +117,7 @@ single varName term
 apply :: Subst -> Term -> Term
 apply (Subst []) term = term
 apply (Subst (x : xs)) (Var var) = if fst x == var then snd x else apply (Subst xs) (Var var)
-apply (Subst (x : xs)) (Comb name termList) = Comb name (map (apply (Subst (x : xs))) termList)
+apply (Subst xs) (Comb name termList) = Comb name (map (apply (Subst xs)) termList)
 
 -- helper function for unpack a Subst
 substToList :: Subst -> [(VarName, Term)]
@@ -119,14 +126,15 @@ substToList (Subst s1) = s1
 -- replacing all terms of first substitution with the second subtition applied to them
 -- and returning result discarding all pairs (X,X) (maps to itself)
 rule1 :: Subst -> Subst -> Subst
-rule1 (Subst s1) (Subst s2) = Subst (filter (\(a, b) -> case b of Var b -> a /= b; Comb n b -> True) (zip (map fst s1) (map (apply (Subst s2)) (map snd s1))))
+rule1 (Subst s1) (Subst s2) = Subst (filter (\(a, b) -> case b of Var y -> a /= y; Comb _ _ -> True) (zip (map fst s1) (map (apply (Subst s2)) (map snd s1))))
 
 -- returns second substition discarding all pairs (y1,s1) where
 -- yi is elem of fst's of first substitution
 rule2 :: Subst -> Subst -> Subst
-rule2 (Subst s1) (Subst s2) = Subst (filter (\y -> fst y `notElem` xis) s2)
-  where
-    xis = map fst s1
+rule2 (Subst s1) (Subst s2) = Subst (filter (\y -> fst y `notElem` domain (Subst s1)) s2)
+
+--evtl selbstabbildung zu früh rausgefiltert -> mit neuen quickchecks testen, falls fehler dann rule 3
+--{X -> Z} . {Y -> X}
 
 -- combine rule1 and rule2
 compose :: Subst -> Subst -> Subst

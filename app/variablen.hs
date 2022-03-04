@@ -1,7 +1,6 @@
 module Variablen where
 
 import Data.List (nub)
-import Pretty
 import Type
 
 -- Returns all VarNames for datatypes: Term, Rule, Prog und Goal
@@ -10,7 +9,7 @@ class Vars a where
 
 instance Vars Term where
   allVars (Var varName) = [varName]
-  allVars (Comb name termList) = nub (concatMap allVars termList)
+  allVars (Comb _ termList) = nub (concatMap allVars termList)
 
 instance Vars Rule where
   allVars (Rule rule termList) = nub (allVars rule ++ concatMap allVars termList)
@@ -22,4 +21,4 @@ instance Vars Goal where
   allVars (Goal termList) = nub (concatMap allVars termList)
 
 freshVars :: [VarName]
-freshVars = [VarName (i : show j) | j <- [0 ..], i <- ['A' .. 'Z']]
+freshVars = map (VarName . (: "")) ['A' .. 'Z'] ++ [VarName (i : show j) | j <- [0 :: Integer ..], i <- ['A' .. 'Z']]

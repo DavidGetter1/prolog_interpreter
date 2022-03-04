@@ -11,6 +11,7 @@ instance Pretty VarName where
 instance Pretty Term where
   pretty (Var varName) = pretty varName
   pretty (Comb name termList)
+    -- leerer string
     | null termList = name ++ symbolSeperatePretty termList ", "
     | otherwise = name ++ "(" ++ symbolSeperatePretty termList ", " ++ ")"
 
@@ -18,19 +19,19 @@ instance Pretty Term where
 symbolSeperatePretty :: Pretty a => [a] -> String -> String
 symbolSeperatePretty [x] _ = pretty x
 symbolSeperatePretty (x : xs) s = pretty x ++ s ++ symbolSeperatePretty xs s
-symbolSeperatePretty [] s = ""
+symbolSeperatePretty [] _ = ""
 
 instance Pretty Rule where
   pretty (Rule term []) = pretty term ++ "."
-  pretty (Rule term (x : xs)) = pretty term ++ " :- " ++ symbolSeperatePretty (x : xs) ", " ++ "."
+  pretty (Rule term xs) = pretty term ++ " :- " ++ symbolSeperatePretty xs ", " ++ "."
 
 instance Pretty Prog where
   pretty (Prog []) = ""
-  pretty (Prog (x : xs)) = symbolSeperatePretty (x : xs) "\n"
+  pretty (Prog xs) = symbolSeperatePretty xs "\n"
 
 instance Pretty Goal where
   pretty (Goal []) = "?- ."
-  pretty (Goal (x : xs)) = "?- " ++ symbolSeperatePretty (x : xs) ", " ++ "."
+  pretty (Goal xs) = "?- " ++ symbolSeperatePretty xs ", " ++ "."
 
 {-
 
