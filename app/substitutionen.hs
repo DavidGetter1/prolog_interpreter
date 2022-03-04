@@ -85,6 +85,14 @@ prop_law13 x1 x2
 prop_law14 :: Subst -> Bool
 prop_law14 s1 = filter (`notElem` (allVars s1)) (domain s1) == []
 
+--domain(restrictTo(empty,xs)) = {}
+prop_law15 :: [VarName] -> Bool
+prop_law15 xs = substToList (restrictTo empty xs) == []
+
+-- domain(restrictTo(s,xs)) ⊆ xs
+prop_law16 :: [VarName] -> Subst -> Bool
+prop_law16 xs s = filter (`notElem` xs) (domain (restrictTo s xs)) == []
+
 -- returns domain of substitution
 domain :: Subst -> [VarName]
 domain (Subst subst) = map fst subst
