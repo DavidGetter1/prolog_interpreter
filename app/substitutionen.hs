@@ -21,8 +21,7 @@ instance Vars Subst where
 instance Arbitrary Subst where
   arbitrary = do
     name <- arbitrary
-    term <- arbitrary
-    return (Subst (filter (\(x, t) -> Var x /= t) (zip (nub name) term)))
+    Subst . filter (\(x, t) -> Var x /= t) . zip (nub name) <$> arbitrary
 
 -- apply(empty,t) = t
 prop_law1 :: Term -> Bool
@@ -42,7 +41,7 @@ prop_law4 = null (domain empty)
 
 --domain(single(x,Var x)) = {}
 prop_law5 :: VarName -> Bool
-prop_law5 x = domain (single x (Var x)) == []
+prop_law5 x = null (domain (single x (Var x)))
 
 -- t ≠ Var x ⇒ domain(single(x,t)) = {x}
 prop_law6 :: VarName -> Term -> Bool
@@ -52,7 +51,7 @@ prop_law6 x term
 
 --domain(compose(s1,s2)) ⊆ domain(s1) ∪ domain(s2)
 prop_law7 :: Subst -> Subst -> Bool
-prop_law7 s1 s2 = filter (`notElem` (domain s1 ++ domain s2)) (domain (compose s1 s2)) == []
+prop_law7 s1 s2 = not (any (`notElem` (domain s1 ++ domain s2)) (domain (compose s1 s2)))
 
 --x1 ≠ x2⇒domain(compose(single(x2,Var x1),single(x1,Var x2))) = {x2}
 prop_law8 :: VarName -> VarName -> Bool
@@ -62,11 +61,11 @@ prop_law8 x1 x2
 
 --allVars(empty) = {}
 prop_law9 :: Bool
-prop_law9 = allVars empty == []
+prop_law9 = null (allVars empty)
 
 --allVars(single(x,Var x)) = {}
 prop_law10 :: VarName -> Bool
-prop_law10 x = allVars (single x (Var x)) == []
+prop_law10 x = null (allVars (single x (Var x)))
 
 -- t ≠ Var x ⇒ allVars(single(x,t)) = allVars(t) ∪ {x}
 prop_law11 :: VarName -> Term -> Bool
@@ -76,7 +75,7 @@ prop_law11 x t
 
 --allVars(compose(s1,s2)) ⊆ allVars(s1) ∪ allVars(s2)
 prop_law12 :: Subst -> Subst -> Bool
-prop_law12 s1 s2 = filter (`notElem` (allVars s1 ++ allVars s2)) (allVars (compose s1 s2)) == []
+prop_law12 s1 s2 = not (any (`notElem` (allVars s1 ++ allVars s2)) (allVars (compose s1 s2)))
 
 --x1 ≠ x2⇒allVars(compose(single(x2,Var x1),single(x1,Var x2))) = {x1,x2}
 prop_law13 :: VarName -> VarName -> Bool
@@ -86,15 +85,15 @@ prop_law13 x1 x2
 
 -- domain(s) ⊆ allVars(s)
 prop_law14 :: Subst -> Bool
-prop_law14 s1 = filter (`notElem` (allVars s1)) (domain s1) == []
+prop_law14 s1 = not (any (`notElem` allVars s1) (domain s1))
 
 --domain(restrictTo(empty,xs)) = {}
 prop_law15 :: [VarName] -> Bool
-prop_law15 xs = substToList (restrictTo empty xs) == []
+prop_law15 xs = null (substToList (restrictTo empty xs))
 
 -- domain(restrictTo(s,xs)) ⊆ xs
 prop_law16 :: [VarName] -> Subst -> Bool
-prop_law16 xs s = filter (`notElem` xs) (domain (restrictTo s xs)) == []
+prop_law16 xs s = not (any (`notElem` xs) (domain (restrictTo s xs)))
 
 -- returns domain of substitution
 domain :: Subst -> [VarName]
