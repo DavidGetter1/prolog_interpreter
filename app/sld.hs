@@ -1,14 +1,17 @@
 module SLD where
 
 import Data.List
+import Data.Maybe
+import Debug.Trace
 import Rename
 import Substitutionen
 import Type
 import Unifikation
+import Variablen
 
 -- Data type representation for SLD tree with Goal as nodes and lists of (edge, child)
 --             Goal [(outgoing edge with mgu, child)] or Failure
-data SLDTree = Node Goal [(Maybe Subst, SLDTree)] | Fail
+data SLDTree = Node Goal [(Subst, SLDTree)] | Fail
   deriving (Show)
 
 -- typeclass for returning names of rules and terms
@@ -46,20 +49,41 @@ instance List Term where
 -- Just (Rule ruleTerm ruleTermList) -> (case apply ms of {empty -> Fail; s -> s}) t ++ renamedRuleTermList
 --   where ms = (case (unify renamedRuleTerm t) of {Just x -> x; Nothing -> empty})
 
+--trace "hallo" (Node (Goal (t : ts)) (map (sldHelper usedVars (Prog ruleList') (Goal (t : ts))) (filter (\x -> getName t `isInfixOf` getName x && getListLength t == getListLength x) ruleList')))
+
 sld :: Prog -> Goal -> SLDTree
-sld (Prog ruleList) (Goal (t : ts)) = Node (Goal (t : ts)) (map (sldHelper (Prog ruleList) (Goal (t : ts))) (filter (\x -> getName t `isInfixOf` getName x && getListLength t == getListLength x) ruleList))
+--call sld helper function with empty list of forbidden variablenames
+sld = sld' []
 
-sldHelper :: Prog -> Goal -> Rule -> (Maybe Subst, SLDTree)
-sldHelper p (Goal (t : ts)) (Rule ruleTerm ruleTermList) =
-  case unMaybe2 empty (unify renamedRuleTerm t) of
-    empty -> (Just empty, Fail)
-    Subst s -> (Just (Subst s), (sld p (Goal ((map (apply (Subst s)) renamedRuleTermList) ++ ts))))
+sld' :: [VarName] -> Prog -> Goal -> SLDTree
+sld' usedVars _ (Goal []) = Node (Goal []) []
+sld' usedVars (Prog ruleList) (Goal (t : ts)) = sld'' (allVars (Goal (t : ts))) (Prog ruleList) (Goal (t : ts))
   where
-    (Rule renamedRuleTerm renamedRuleTermList) = rename [] (Rule ruleTerm ruleTermList)
+    -- rename all variables of program to avoid name conflicts
+    ruleList' = map (rename (usedVars ++ allVars (Goal (t : ts)))) ruleList
+    sld'' :: [VarName] -> Prog -> Goal -> SLDTree
+    sld'' _ (Prog _) (Goal []) = Node (Goal []) [] -- empty goal -> success!
+    sld'' _ (Prog []) goal = Node goal [] -- empty program
+    sld'' usedVars (Prog rs) (Goal (t2 : ts2)) = Node (Goal (t2 : ts2)) (trace "\n" filter (notFail . snd) ts2')
+      where
+        -- modified ts2 aqcuired by looking for a matching rule
+        ts2' = map findRuleMatch ruleList'
+          where
+            -- returns pair of outgoing mgu and children node for first rule matching with term of goal
+            -- returns pair of empty and Fail if no rule matches
+            findRuleMatch = \(Rule ruleTerm ruleTermList) -> case unify t2 ruleTerm of -- unify checks implicitly whether t2 fits to ruleTerm and returns their Maybe mgu
+              Just subst -> (subst, sld'' (usedVars ++ allVars subst ++ allVars (Goal (t2 : ts2))) (Prog ruleList) (Goal (map (apply subst) (ruleTermList ++ ts2)))) -- recursive sld'' call with the new Goal where the usedVars are passed and expanded
+              Nothing -> (empty, Fail) -- rule didn't match, unify algo returns fail for this node
 
--- rename find (\x -> getName t `isInfixOf` getName x && getListLength t == getListLength x)
+-- returns True if passed SLD Node isn't Fail
+notFail :: SLDTree -> Bool
+notFail Fail = False
+notFail _ = True
 
--- ?- nth(X,[1,2,1],1), nth(Y,[3,4,5],6).
+type Strategy = SLDTree -> [Subst]
+
+dfs :: Strategy
+dfs tree = 
 
 --Prog [Rule (Comb "auto" [Var (VarName "X"), Var (VarName "X")]) [],(Rule (Comb "p" [Var (VarName "X"), Var (VarName "Z")]) [(Comb "q" [Var (VarName "X"), Var (VarName "Y")]),(Comb "p" [Var (VarName "Y"), Var (VarName "Z")])]),Rule (Comb "p" [Var (VarName "X"), Var (VarName "X")]) [],Rule (Comb "q" [Comb  "a" [], Comb "b" []]) []]
 -- Comb "p" [Var (VarName "S"), (Comb "b" [])],
