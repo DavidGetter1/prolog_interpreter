@@ -1,3 +1,4 @@
-append([], L, L).
-append([E|R], L, [E|RL]) :- append(R, L, RL).
-l.
+p(X,Z) :- q(X,Y), p(Y,Z).
+p(X,X).
+q(a,b).
+
