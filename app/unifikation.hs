@@ -71,4 +71,5 @@ prop_lawU4 t1 t2
 
 return []
 
+runTestsUnify :: IO Bool
 runTestsUnify = $quickCheckAll

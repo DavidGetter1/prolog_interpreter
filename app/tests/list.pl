@@ -44,7 +44,7 @@ concatmaplist(P, Xs, Ys) :- maplist(P, Xs, Yss), concatlist(Yss, Ys).
 % Expected result: Three solutions, "{X -> [], Y -> [1, 2]}",
 % "{X -> [1], Y -> [2]}", and "{X -> [1, 2], Y -> []}".
 
-% Test query: "append(_,_,[1,2]).".                    ///////////SCHLECHT
+% Test query: "append(_,_,[1,2]).".                   
 % Expected result: Three times the empty substitution.
 
 % Test query: "last([1,2,3],X).".
@@ -58,7 +58,7 @@ concatmaplist(P, Xs, Ys) :- maplist(P, Xs, Yss), concatlist(Yss, Ys).
 % Test query: "reverse([1,2,3],Xs).".
 % Expected result: One solution, "{Xs -> [3, 2, 1]}".
 
-% Test query: "reverse(Xs,[1,2,3]).".                         /////////// SCHLECHT
+% Test query: "reverse(Xs,[1,2,3]).".                        
 % Expected result: One solution, "{Xs -> [3, 2, 1]}", but non-termination.
 
 % Test query: "reverse(Xs,Xs).".

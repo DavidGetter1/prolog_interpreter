@@ -21,7 +21,7 @@ prolog :: IO ()
 prolog = do
   putStrLn "Welcome!"
   putStrLn "Type ':h' for help."
-  prolog' "" dfs (Prog [])
+  prolog' "" bfs (Prog [])
   where
     prolog' :: String -> Strategy -> Prog -> IO ()
     prolog' progSource strat p = do

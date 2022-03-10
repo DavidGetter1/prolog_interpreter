@@ -3,6 +3,7 @@
 module Rename where
 
 import Substitutionen
+import Test.QuickCheck
 import Type
 import Variablen
 
@@ -17,7 +18,7 @@ renameHelper :: [VarName] -> Rule -> Rule
 renameHelper varList (Rule term termList) = Rule (apply renameSubst term) (map (apply renameSubst) termList)
   where
     -- renameSubst = Subst (zip (allVars (Rule term termList)) (freshDiffVar varList (allVars (Rule term termList)) []))
-    renameSubst = Subst (zip (allVars (Rule term termList)) (map Var (take (length (allVars (Rule term termList))) (freshDiffVar (varList ++ allVars (Rule term termList))))))
+    renameSubst = foldr compose empty (zipWith single (allVars (Rule term termList)) (map Var (take (length (allVars (Rule term termList))) (freshDiffVar (varList ++ allVars (Rule term termList))))))
 
 -- returns unused vars
 freshDiffVar :: [VarName] -> [VarName]
@@ -77,4 +78,5 @@ prop_lawR5 xs r = length (allVars (rename xs r)) >= length (allVars r)
 
 return []
 
+runTestsRename :: IO Bool
 runTestsRename = $quickCheckAll

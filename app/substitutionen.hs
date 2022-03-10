@@ -146,4 +146,5 @@ prop_law16 xs s = not (any (`notElem` xs) (domain (restrictTo s xs)))
 
 return []
 
+runTestsSubst :: IO Bool
 runTestsSubst = $quickCheckAll
