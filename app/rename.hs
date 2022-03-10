@@ -1,12 +1,9 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Rename where
 
-import Data.List
-import Data.Maybe
-import Pretty
 import Substitutionen
-import Test.QuickCheck
 import Type
-import Unifikation
 import Variablen
 
 --renames all variables in the passed rule, that are elements of the passed list
@@ -22,12 +19,6 @@ renameHelper varList (Rule term termList) = Rule (apply renameSubst term) (map (
     -- renameSubst = Subst (zip (allVars (Rule term termList)) (freshDiffVar varList (allVars (Rule term termList)) []))
     renameSubst = Subst (zip (allVars (Rule term termList)) (map Var (take (length (allVars (Rule term termList))) (freshDiffVar (varList ++ allVars (Rule term termList))))))
 
--- converts a maybe to its just value or the given default in the first argument if it is nothing
-unMaybe1 :: a -> Maybe a -> a
-unMaybe1 a ma = case ma of
-  Just x -> x
-  Nothing -> a
-
 -- returns unused vars
 freshDiffVar :: [VarName] -> [VarName]
 freshDiffVar used = [x | x <- freshVars, x `notElem` used]
@@ -35,20 +26,26 @@ freshDiffVar used = [x | x <- freshVars, x `notElem` used]
 -- takes a list of forbidden names and a rule, then replaces all "_" with different VarNames /= forbidden name
 -- each _ gets mapped to a different VarName
 renameAnon :: [VarName] -> Rule -> Rule
-renameAnon varList (Rule term (t : ts))
-  | VarName "_" `elem` allVars term = renameAnon (fVar varList : varList) (Rule (apply (single (VarName "_") (Var (fVar varList))) term) (t : ts))
-  | VarName "_" `elem` allVars t = renameAnon (fVar varList : varList) (Rule term (apply (single (VarName "_") (Var (fVar varList))) t : ts))
+renameAnon varList (Rule term (t : ts)) --  vvv only apply to fst occ!!!!
+  | VarName "_" `elem` allVars term = renameAnon (fVar varList : varList) (Rule (applyToFstAnon (single (VarName "_") (Var (fVar varList))) term) (t : ts))
+  | VarName "_" `elem` allVars t = renameAnon (fVar varList : varList) (Rule term (applyToFstAnon (single (VarName "_") (Var (fVar varList))) t : ts))
   | VarName "_" `elem` concatMap allVars ts = Rule term (t : returnTermList (renameAnon varList (Rule term ts)))
   | otherwise = Rule term (t : ts)
 renameAnon varList (Rule term []) = if VarName "_" `elem` allVars term then renameAnon (fVar varList : varList) (Rule (apply (single (VarName "_") (Var (fVar varList))) term) []) else Rule term []
 
 -- returns the term list of a rule
 returnTermList :: Rule -> [Term]
-returnTermList (Rule term termList) = termList
+returnTermList (Rule _ termList) = termList
 
 -- returns one fresh Variable that is not element of the passed list
 fVar :: [VarName] -> VarName
 fVar varList = head (take 1 (freshDiffVar varList))
+
+-- applies substitution to first occurence of anonymous variable
+applyToFstAnon :: Subst -> Term -> Term
+applyToFstAnon subst (Var v) = apply subst (Var v)
+applyToFstAnon subst (Comb name (t1 : t2 : ts)) = if VarName "_" `elem` allVars t1 then Comb name ((applyToFstAnon subst t1) : t2 : ts) else (Comb name (t1 : (applyToFstAnon subst t2) : ts))
+applyToFstAnon _ t = t --never reached when called by renameAnon
 
 -- returns the intersect of two lists
 intersection :: Eq a => [a] -> [a] -> [a]
@@ -77,3 +74,7 @@ prop_lawR4 xs r
 -- | allVars(rename(xs,r))| ≥ |allVars(r)|
 prop_lawR5 :: [VarName] -> Rule -> Bool
 prop_lawR5 xs r = length (allVars (rename xs r)) >= length (allVars r)
+
+return []
+
+runTestsRename = $quickCheckAll
